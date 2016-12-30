@@ -867,6 +867,7 @@ NeP.DSL:Register('RtB', function()
     local int = 0
     local bearing = false
     local shark = false
+    local broadsides = false
 
     -- Shark Infested Waters
     if UnitBuff('player', GetSpellInfo(193357)) then
@@ -898,33 +899,56 @@ NeP.DSL:Register('RtB', function()
     -- Broadsides
     if UnitBuff('player', GetSpellInfo(193356)) then
         int = int + 1
+        broadsides = true
     end
 
-    -- If all six buffs are active:
-    if int == 6 then
-        return true --"LEEEROY JENKINS!"
+    if bearing then return true end
 
-            -- If two or Shark/Bearing and AR/Curse active:
-    elseif int == 2 or int == 3 or ((bearing or shark) and ((UnitBuff("player", GetSpellInfo(13750)) or UnitDebuff("player", GetSpellInfo(202665))))) then
-        return true --"Keep."
+    if shark and (UnitBuff('player', GetSpellInfo(13750)) or UnitDebuff('player', GetSpellInfo(202665))) then return true end
 
-            --[[
-      -- If only True Bearing
-    elseif bearing then
-      return true --"Keep. AR/Curse if ready."
-      --]]
+    local gcd = NeP.DSL:Get('gcd')()
+    local _,_,_,_,_,_,sharkExpires = UnitAura('player', GetSpellInfo(193357))
+    local sharkTimeLeft = sharkExpires and sharkExpires - GetTime() or 0
 
-            -- If only Shark or True Bearing and CDs ready
-    elseif (bearing or shark) and ((GetSpellCooldown(13750) == 0) or (GetSpellCooldown(202665) == 0)) then
-        return true --"AR/Curse NOW and keep!"
+    if shark and ((GetSpellCooldown(13750) < sharkTimeLeft + gcd + 15) and (GetSpellCooldown(202665) < sharkTimeLeft + gcd + 15)) then return true end
 
-            --if we have only ONE bad buff BUT AR/curse is active:
-    elseif int ==1 and ((UnitBuff("player", GetSpellInfo(13750)) or UnitDebuff("player", GetSpellInfo(202665)))) then
-        return true
+    if broadsides and UnitAura('player', GetSpellInfo(202665)) then int = int - 1 end
 
-            -- If only one bad buff:
-    else return false --"Reroll now!"
-    end
+    return int > 1
+end)
+
+NeP.DSL:Register('PistolShotCP', function()
+  local hasQuickShot = NeP.DSL:Get('talent')(nil, '1,3')
+  local hasBroadsides = NeP.DSL:Get('buff')('player', 'Broadsides')
+  local cp = 1
+
+  if hasQuickShot then cp = cp + 1 end
+  if hasBroadsides then cp = cp + 1 end
+
+  return cp
+end)
+
+NeP.DSL:Register('CanUseDreadblades', function()
+  --buff.duration
+  local bonesDuration = NeP.DSL:Get('buff.duration')('player', 'Shark Infested Waters')
+  local minBonesDuration = 15 + NeP.DSL:Get('gcd')()
+
+  if bonesDuration and bonesDuration >= minBonesDuration then return true end
+
+  bonesDuration = NeP.DSL:Get('buff.duration')('player', 'True Bearing')
+  if bonesDuration and bonesDuration >= minBonesDuration then return true end
+
+  bonesDuration = NeP.DSL:Get('buff.duration')('player', 'Jolly Roger')
+  if bonesDuration and bonesDuration >= minBonesDuration then return true end
+
+  bonesDuration = NeP.DSL:Get('buff.duration')('player', 'Grand Melee')
+  if bonesDuration and bonesDuration >= minBonesDuration then return true end
+
+  bonesDuration = NeP.DSL:Get('buff.duration')('player', 'Buried Treasure')
+  if bonesDuration and bonesDuration >= minBonesDuration then return true end
+
+  bonesDuration = NeP.DSL:Get('buff.duration')('player', 'Broadsides')
+  if bonesDuration and bonesDuration >= minBonesDuration then return true end
 end)
 
 --------------------------------------------------------------------------------
